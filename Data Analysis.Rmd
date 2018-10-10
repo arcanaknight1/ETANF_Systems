@@ -1,0 +1,32 @@
+---
+title: "Systems Analytics"
+author: "Andrew Olson"
+date: "October 10, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# Loading libraries needed for analysis
+library(ggplot2)
+library(glmnet)
+library(pROC)
+library(plyr)
+library(dplyr)
+library(randomForest)
+library(margins)
+
+#loading data and redefining "-" symbols as NA
+ETANFdata <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
+#Removing unused Employment training variable
+ETANF <- ETANFdata[, c(1:16, 18, 19)]
+
+#Set seed
+set.seed(1234)
+
+```
+
+
+
+```{r}
+
+```
