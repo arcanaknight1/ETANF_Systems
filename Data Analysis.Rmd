@@ -14,11 +14,12 @@ library(plyr)
 library(dplyr)
 library(randomForest)
 library(margins)
+library(party)
 
 #loading data and redefining "-" symbols as NA
-ETANFdata <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
+ETANFload <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
 #Removing unused Employment training variable
-ETANF <- ETANFdata[, c(1:16, 18, 19)]
+ETANFdata <- ETANFload[, c(1:16, 18, 19)]
 
 #Set seed
 set.seed(1234)
@@ -28,5 +29,17 @@ set.seed(1234)
 
 
 ```{r}
+### Variable selection
 
+#subsetting data for only dependent & Independent variables
+etanf.x <- ETANFdata[, c(5:18)]
+# fit the random forest
+rf1 <- cforest(ETANF ~ ., data= etanf.x, control=cforest_unbiased(mtry=2,ntree=50)) 
+rf2 <- cforest(ETANF ~ ., data= na.omit(etanf.x), control=cforest_unbiased(mtry=2,ntree=50))
+# test for variable importance
+set.seed(1234)
+rf.test1 <- varimp(rf1)
+rf.test2 <- varimp(rf2, conditional = T)
+rf.test1
+rf.test2
 ```
