@@ -15,11 +15,14 @@ library(dplyr)
 library(randomForest)
 library(margins)
 library(party)
+library(leaps)
 
 #loading data and redefining "-" symbols as NA
 ETANFload <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
 #Removing unused Employment training variable
 ETANFdata <- ETANFload[, c(1:16, 18, 19)]
+#converting med_income from factor
+ETANFdata$Med_Income <- as.numeric(ETANFload$Med_Income)
 
 #Set seed
 set.seed(1234)
@@ -31,15 +34,47 @@ set.seed(1234)
 ```{r}
 ### Variable selection
 
-#subsetting data for only dependent & Independent variables
-etanf.x <- ETANFdata[, c(5:18)]
+#subsetting data to remove extra location descriptors & missing records from dependent & Independent variables for variable selection
+etanf.x <- na.omit(ETANFdata[, c(3,5:18)])
+
 # fit the random forest
-rf1 <- cforest(ETANF ~ ., data= etanf.x, control=cforest_unbiased(mtry=2,ntree=50)) 
-rf2 <- cforest(ETANF ~ ., data= na.omit(etanf.x), control=cforest_unbiased(mtry=2,ntree=50))
-# test for variable importance
-set.seed(1234)
-rf.test1 <- varimp(rf1)
-rf.test2 <- varimp(rf2, conditional = T)
-rf.test1
-rf.test2
+# rf1 <- cforest(ETANF ~ ., data= etanf.x, control=cforest_unbiased(mtry=2,ntree=20))
+
+# AIC by crossvalidation for each variable selection method
+testCV <- function(DATA){
+  # combine two columns
+  func.data <- data.frame(DATA)
+  # Count the number of row of entire dataframe
+  n.data <- nrow(func.data)
+  # divide the number of rows in the dataframe into 8 groups
+  folds <- split(sample(n.data, n.data ,replace=FALSE), as.factor(1:8))
+    # aic list
+    step.forward.aic <- rep(0,8)
+    step.backward.aic <- rep(0,8)
+    result<- data.frame("method" = character(), "aic" = numeric(), stringsAsFactors = FALSE)
+  for (j in 1:8){
+      test.data <- func.data[folds[[j]], ]
+      n.test <-nrow(test.data)
+      train.data <- func.data[-folds[[j]], ]
+         #forward stepwise model
+      null = glm(ETANF~1, data = na.omit(train.data), family = "poisson")
+      full = glm(ETANF~., data = na.omit(train.data), family = "poisson")
+      fwd.model <- step(null, scope = list(lower = null, upper = full), direction = "forward", trace = FALSE)
+      step.forward.aic[j] <- AIC(fwd.model)
+        #backward stepwise model
+      bwd.model <- step(full, direction = "backward", trace = FALSE)
+      step.backward.aic [j] <- AIC(bwd.model)
+  }
+    result <- rbind(result, data.frame(method = "forward", auc = mean(step.forward.aic)))
+    result <- rbind(result, data.frame(method = "backward", auc = mean(step.backward.aic)))
+    return(result)
+}
+
+testCV(etanf.x)
+
+#Counting predictors for backward selection
+null = glm(ETANF~1, data = etanf.x, family = "poisson")
+full = glm(ETANF~., data = etanf.x, family = "poisson")
+bwd.model <- bwd.model <- step(full, direction = "backward", trace = FALSE)
+bwd.model
 ```
