@@ -12,9 +12,6 @@ library(glmnet)
 library(pROC)
 library(plyr)
 library(dplyr)
-library(randomForest)
-library(margins)
-library(party)
 library(leaps)
 
 #loading data and redefining "-" symbols as NA
@@ -23,19 +20,27 @@ ETANFload <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",
 ETANFdata <- ETANFload[, c(1:16, 18, 19)]
 #converting med_income from factor
 ETANFdata$Med_Income <- as.numeric(ETANFload$Med_Income)
+ETANFdata$Year <- as.factor(ETANFdata$Year)
 
-#Set seed
-set.seed(1234)
+#etanf.ts <- ts(ETANFdata, frequency = 1, start = c(2012), end = )
 
 ```
 
+
+```{r}
+### Data Visualization
+p1 <- ggplot(ETANFdata,aes(ETANF)) + geom_bar() + xlab("ETANF") + scale_x_continuous(limits = c(0, 350)) #limited scale to exclude outliers in Pit & Philly
+p1
+```
 
 
 ```{r}
 ### Variable selection
 
+#Set seed
+set.seed(1234)
 #subsetting data to remove extra location descriptors & missing records from dependent & Independent variables for variable selection
-etanf.x <- na.omit(ETANFdata[, c(3,5:18)])
+etanf.x <- na.omit(ETANFdata[, c(3:18)])
 
 # fit the random forest
 # rf1 <- cforest(ETANF ~ ., data= etanf.x, control=cforest_unbiased(mtry=2,ntree=20))
@@ -78,3 +83,12 @@ full = glm(ETANF~., data = etanf.x, family = "poisson")
 bwd.model <- bwd.model <- step(full, direction = "backward", trace = FALSE)
 bwd.model
 ```
+
+```{r}
+### Regression model
+etanf.model <- glm(ETANF~Year + PA_Region + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
+
+summary(etanf.model)
+
+```
+
