@@ -13,6 +13,7 @@ library(pROC)
 library(plyr)
 library(dplyr)
 library(leaps)
+library(reshape)
 
 #loading data and redefining "-" symbols as NA
 ETANFload <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
@@ -22,6 +23,7 @@ ETANFdata <- ETANFload[, c(1:16, 18, 19)]
 ETANFdata$Med_Income <- as.numeric(ETANFload$Med_Income)
 ETANFdata$Year <- as.factor(ETANFdata$Year)
 
+ETANFmelt <- melt(ETANFdata, id = c("County", "Year"))
 #etanf.ts <- ts(ETANFdata, frequency = 1, start = c(2012), end = )
 
 ```
@@ -29,8 +31,15 @@ ETANFdata$Year <- as.factor(ETANFdata$Year)
 
 ```{r}
 ### Data Visualization
-p1 <- ggplot(ETANFdata,aes(ETANF)) + geom_bar() + xlab("ETANF") + scale_x_continuous(limits = c(0, 350)) #limited scale to exclude outliers in Pit & Philly
+
+# define palette
+cpPalette <- c("#da3957","#57b951","#9d55ca","#9ab635","#6169d8","#c0ab39","#d360c8","#577c2b","#e13990","#55c1a1","#da562a","#4eacd7","#e7a13a","#5d7dc6","#c47d2a","#855099","#9cb36a","#ad3374","#398659","#d867ae","#7c722c","#b891d9","#965a2a","#e18db8","#cf9e68","#e35e84","#e57f5f","#9b5073","#b43c31","#dd8182","#a24951")
+#plot of ETANF cases normalized by population
+p1 <- ggplot(ETANFdata,aes(y = (ETANF/Population), x = Year, color = County)) + geom_point() + xlab("Year") + scale_color_manual(values =  cpPalette) 
 p1
+p2 <- ggplot(ETANFdata,aes(x = ETANF, fill = County)) + geom_bar() + xlab("ETANF") + scale_fill_manual(values =  cpPalette) + xlim(0, 300)
+p2
+
 ```
 
 
@@ -88,7 +97,9 @@ bwd.model
 ### Regression model
 etanf.model <- glm(ETANF~Year + PA_Region + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
 
-summary(etanf.model)
+#summary(etanf.model)
+
+ggplot(etanf.model, aes(x = etanf.model$fitted.values, y = etanf.model$fitted.values))+ geom_line()
 
 ```
 
