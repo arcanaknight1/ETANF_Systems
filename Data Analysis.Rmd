@@ -19,11 +19,13 @@ library(reshape)
 ETANFload <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
 #Removing unused Employment training variable
 ETANFdata <- ETANFload[, c(1:16, 18, 19)]
-#converting med_income from factor
-ETANFdata$Med_Income <- as.numeric(ETANFload$Med_Income)
-ETANFdata$Year <- as.factor(ETANFdata$Year)
+#Cleaning the data - converting strings to numbers
+ETANFdata <- mutate(ETANFdata, Year = as.factor(as.numeric(Year)), ETANF = as.numeric(gsub(",","",ETANF)), Snap_January = as.numeric(gsub(",","",Snap_January)),
+                    SNAP_July = as.numeric(gsub(",","",SNAP_July)), Med_Income = as.numeric(Med_Income), Medicaid = as.numeric(gsub(",","",Medicaid)),
+                    SSI = as.numeric(gsub(",","",SSI)), CHIP = as.numeric(gsub(",","",CHIP)), ED_Attain_HSandAbove = as.numeric(ED_Attain_HSandAbove),
+                    Ed_Attain_BAandAbove = as.numeric(ED_Attain_HSandAbove), Population = as.numeric(gsub(",","",Population)))
 
-ETANFmelt <- melt(ETANFdata, id = c("County", "Year"))
+#ETANFmelt <- melt(ETANFdata, id = c("County", "Year"))
 #etanf.ts <- ts(ETANFdata, frequency = 1, start = c(2012), end = )
 
 ```
@@ -39,7 +41,9 @@ p1 <- ggplot(ETANFdata,aes(y = (ETANF/Population), x = Year, color = County)) + 
 p1
 p2 <- ggplot(ETANFdata,aes(x = ETANF, fill = County)) + geom_bar() + xlab("ETANF") + scale_fill_manual(values =  cpPalette) + xlim(0, 300)
 p2
-
+p3 <- ggplot(ETANFdata,aes(y = ETANF, x = Year, color = County)) + geom_point() + 
+  geom_smooth(data = ETANFdata, method = "glm", formula = ETANF~Year + County + PA_Region + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population) + xlab("Year") + scale_color_manual(values =  cpPalette) + ylim(0,300)
+p3
 ```
 
 
@@ -95,11 +99,13 @@ bwd.model
 
 ```{r}
 ### Regression model
-etanf.model <- glm(ETANF~Year + PA_Region + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
+etanf.model <- glm(ETANF~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
 
 #summary(etanf.model)
 
-ggplot(etanf.model, aes(x = etanf.model$fitted.values, y = etanf.model$fitted.values))+ geom_line()
+etanf.predicted <- data.frame(ETANF_pred = predict.glm(etanf.model, ETANFdata), County = ETANFdata$County[-"Butler"], Year = ETANFdata$Year)
+
+#ggplot(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + geom_point() + geom_line(data = etanf.predicted, aes(x = Year, y = ETANF, color = County))
 
 ```
 
