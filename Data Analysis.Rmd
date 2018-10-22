@@ -99,13 +99,17 @@ bwd.model
 
 ```{r}
 ### Regression model
-etanf.model <- glm(ETANF~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
+etanf.model <- glm(ETANF~Year|County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
 
 #summary(etanf.model)
 
-etanf.predicted <- data.frame(ETANF_pred = predict.glm(etanf.model, ETANFdata), County = ETANFdata$County[-"Butler"], Year = ETANFdata$Year)
+etanf.predicted <- data.frame(ETANF_pred = predict.glm(etanf.model, ETANFdata), County = ETANFdata$County, Year = ETANFdata$Year)
+#etanf.predicted <- data.frame(ETANF_pred = predict.glm(etanf.model, filter(ETANFdata, !(County %in% c("Butler", "Greene", "McKean")))), County = ETANFdata$County, Year = ETANFdata$Year)
 
 #ggplot(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + geom_point() + geom_line(data = etanf.predicted, aes(x = Year, y = ETANF, color = County))
 
 ```
 
+```{r}
+ggplot(data = ETANFdata, )
+```
