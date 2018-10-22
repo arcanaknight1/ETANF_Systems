@@ -8,12 +8,17 @@ output: html_document
 ```{r setup, include=FALSE}
 # Loading libraries needed for analysis
 library(ggplot2)
+library(gtable) #for plot layouts
+library(grid) #for plot layouts
+library(gridExtra) #for plot layouts
 library(glmnet)
 library(pROC)
 library(plyr)
 library(dplyr)
 library(leaps)
 library(reshape)
+library(foreign)
+library(plm) #for panel regression
 
 #loading data and redefining "-" symbols as NA
 ETANFload <- read.table("Data_Analysis_Spreadsheet.csv", header = TRUE, sep = ",", na.strings = "-")
@@ -49,6 +54,7 @@ p3
 
 ```{r}
 ### Variable selection
+
 
 #Set seed
 set.seed(1234)
@@ -97,19 +103,57 @@ bwd.model <- bwd.model <- step(full, direction = "backward", trace = FALSE)
 bwd.model
 ```
 
-```{r}
-### Regression model
-etanf.model <- glm(ETANF~Year|County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, family = "poisson")
+```{r Regression}
 
-#summary(etanf.model)
+#removing Butler, Greene, & McKean counties from data because of null values
+to_keep <- which(ETANFdata$County != "Butler"& ETANFdata$County != "Greene"& ETANFdata$County != "McKean")
+etanf.updated <- ETANFdata[c(to_keep),]
+etanf.model <- glm(ETANF~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove  + Pov_Rate + Population, data = etanf.updated, family = "poisson")
 
-etanf.predicted <- data.frame(ETANF_pred = predict.glm(etanf.model, ETANFdata), County = ETANFdata$County, Year = ETANFdata$Year)
-#etanf.predicted <- data.frame(ETANF_pred = predict.glm(etanf.model, filter(ETANFdata, !(County %in% c("Butler", "Greene", "McKean")))), County = ETANFdata$County, Year = ETANFdata$Year)
+summary(etanf.model)
 
-#ggplot(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + geom_point() + geom_line(data = etanf.predicted, aes(x = Year, y = ETANF, color = County))
+etanf.updated$pred <- predict(etanf.model, etanf.updated, type = "response")
 
+p1<- ggplot() +
+  geom_line(data = etanf.updated, aes(x = Year, y = pred, color = County, group = County)) + 
+  geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + ggtitle("Regression")
+p2<- ggplot() +
+  geom_line(data = etanf.updated, aes(x = Year, y = pred, color = County, group = County)) + ylim(0,350) +
+  geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + ggtitle("Zoomed in Regression")
+
+
+#Normalizing ETANF by population
+etanf.new <-  etanf.updated
+etanf.new$ETANF2 <- with(etanf.new, ETANF/Population)
+
+new.model <- glm(ETANF2~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove  + Pov_Rate, data = etanf.new, family = "poisson")
+etanf.new$pred <- predict(new.model, etanf.new, type = "response")
+p3<- ggplot() +
+  geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) + 
+  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Normalized Regression")
+p4<- ggplot() +
+  geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) + ylim(0,.001) +
+  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Zoomed in Normalized")
+p1
+p2
+p3
+p4
+#grid.arrange(p1, p2, p3, p4, nrow = 4)
 ```
 
-```{r}
-ggplot(data = ETANFdata, )
+```{r Panel} 
+#scatterplot(ETANF ~ Year|County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Ed_Attain_BAandAbove + Pov_Rate + Population, data = ETANFdata, boxplots = F, smooth = TRUE, reg.line = FALSE)
+#scatterplot(ETANF ~ Year|County, data = ETANFdata, boxplots = FALSE, smooth = TRUE, reg.line = FALSE)
+#abline(lm(ETANFdata$ETANF ~ ETANFdata$Year), lwd = 3, col = "red")
+#coplot(ETANF ~ Year|County, type = "b", data = ETANFdata)
+
+panel <- plm(ETANF ~ SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Pov_Rate + Population, data = na.omit(ETANFdata), index = c("County", "Year"), model = "within")
+detect_lin_dep(panel)
+alias(panel, data = ETANFdata)
+summary(panel)
+
+pred.panel <- plm:::fitted_exp.plm(panel, data = ETANFdata)
+
+#library(lme4)
+#fit1 <- glmer(ETANF ~ SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Pov_Rate + Population + (County|Year), data = ETANFdata, family= poisson(link= "log"))
 ```
