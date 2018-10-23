@@ -102,6 +102,7 @@ test2
 #Counting predictors for backward selection
 null = glm(ETANF~1, data = etanf.x, family = "poisson")
 full = glm(ETANF~., data = etanf.x, family = "poisson")
+set.seed(1234)
 bwd.model <- step(full, direction = "backward", trace = FALSE)
 bwd.model
 null = glm(ETANF~1, data = etanf.x2, family = "poisson")
@@ -117,16 +118,18 @@ to_keep <- which(ETANFdata$County != "Butler"& ETANFdata$County != "Greene"& ETA
 etanf.updated <- ETANFdata[c(to_keep),]
 etanf.model <- glm(ETANF~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove  + Pov_Rate + Population, data = etanf.updated, family = "poisson")
 
-#summary(etanf.model)
+summary(etanf.model)
 
 etanf.updated$pred <- predict(etanf.model, etanf.updated, type = "response")
 
 p1<- ggplot() +
   geom_line(data = etanf.updated, aes(x = Year, y = pred, color = County, group = County)) + 
-  geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + ggtitle("Regression")
+  geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) +
+  labs(y = "ETANF Cases", title = "Regression") + theme(legend.position = "none")
 p2<- ggplot() +
   geom_line(data = etanf.updated, aes(x = Year, y = pred, color = County, group = County)) + ylim(0,350) +
-  geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + ggtitle("Zoomed in Regression")
+  geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + 
+  labs(y = "ETANF Cases", title = "Zoomed Regression") + theme(legend.position = "none")
 
 
 #Normalizing ETANF by population
@@ -137,10 +140,14 @@ new.model <- glm(ETANF2~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med
 etanf.new$pred <- predict(new.model, etanf.new, type = "response")
 p3<- ggplot() +
   geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) + 
-  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Normalized Regression") 
+  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + 
+  labs(y = "ETANF Cases per Capita", title = "Per Capita Regression") + theme(legend.position = "none") +
+  scale_y_continuous(labels = scales::percent)
 p4<- ggplot() +
-  geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) + ylim(0,.001) +
-  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Zoomed in Normalized")
+  geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) +
+  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + 
+  labs(y = "ETANF Cases per Capita", title = "Zoomed in Per Capita") + theme(legend.position = "none") +
+  scale_y_continuous(labels = scales::percent, limits = c(0, .001))
 p1
 p2
 p3
