@@ -52,7 +52,7 @@ p3
 ```
 
 
-```{r}
+```{r VariableSelection, echo=TRUE}
 ### Variable selection
 
 
@@ -60,7 +60,7 @@ p3
 set.seed(1234)
 #subsetting data to remove extra location descriptors & missing records from dependent & Independent variables for variable selection
 etanf.x <- na.omit(ETANFdata[, c(3:18)])
-
+etanf.x2 <- na.omit(ETANFdata[, c(2:18)])
 # fit the random forest
 # rf1 <- cforest(ETANF ~ ., data= etanf.x, control=cforest_unbiased(mtry=2,ntree=20))
 
@@ -94,23 +94,30 @@ testCV <- function(DATA){
     return(result)
 }
 
-testCV(etanf.x)
+test1 <- testCV(etanf.x)
+test2 <- testCV(etanf.x2)
 
+test1
+test2
 #Counting predictors for backward selection
 null = glm(ETANF~1, data = etanf.x, family = "poisson")
 full = glm(ETANF~., data = etanf.x, family = "poisson")
-bwd.model <- bwd.model <- step(full, direction = "backward", trace = FALSE)
+bwd.model <- step(full, direction = "backward", trace = FALSE)
 bwd.model
+null = glm(ETANF~1, data = etanf.x2, family = "poisson")
+full = glm(ETANF~., data = etanf.x2, family = "poisson")
+bwd.model2 <- step(full, direction = "backward", trace = FALSE)
+bwd.model2
 ```
 
-```{r Regression}
+```{r Regression, message=FALSE, warning=FALSE}
 
 #removing Butler, Greene, & McKean counties from data because of null values
 to_keep <- which(ETANFdata$County != "Butler"& ETANFdata$County != "Greene"& ETANFdata$County != "McKean")
 etanf.updated <- ETANFdata[c(to_keep),]
 etanf.model <- glm(ETANF~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove  + Pov_Rate + Population, data = etanf.updated, family = "poisson")
 
-summary(etanf.model)
+#summary(etanf.model)
 
 etanf.updated$pred <- predict(etanf.model, etanf.updated, type = "response")
 
@@ -130,7 +137,7 @@ new.model <- glm(ETANF2~Year + County + SNAP_July + Medicaid + CHIP + LFPR + Med
 etanf.new$pred <- predict(new.model, etanf.new, type = "response")
 p3<- ggplot() +
   geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) + 
-  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Normalized Regression")
+  geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Normalized Regression") 
 p4<- ggplot() +
   geom_line(data = etanf.new, aes(x = Year, y = pred, color = County, group = County)) + ylim(0,.001) +
   geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Zoomed in Normalized")
@@ -138,7 +145,29 @@ p1
 p2
 p3
 p4
-#grid.arrange(p1, p2, p3, p4, nrow = 4)
+
+#smaller model
+# small <- glm(ETANF~County+ Year + WIC + CHIP, data = etanf.updated, family = "poisson")
+# etanf.updated$pred2 <- predict(small, etanf.updated, type = "response")
+# small.normal <- glm(ETANF2~County + CHIP + WIC, data = etanf.new, family = "poisson")
+# etanf.new$pred2<- predict(small.normal, etanf.new, type = "response")
+# 
+# p5<- ggplot() +
+#   geom_line(data = etanf.updated, aes(x = Year, y = pred2, color = County, group = County)) + 
+#   geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + ggtitle("Regression2")
+# p6<- ggplot() +
+#   geom_line(data = etanf.updated, aes(x = Year, y = pred2, color = County, group = County)) + ylim(0,350) +
+#   geom_point(data = ETANFdata, aes(x = Year, y = ETANF, color = County)) + ggtitle("Zoomed in Regression2")
+# p7<- ggplot() +
+#   geom_line(data = etanf.new, aes(x = Year, y = pred2, color = County, group = County)) + 
+#   geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Normalized Regression2") 
+# p8<- ggplot() +
+#   geom_line(data = etanf.new, aes(x = Year, y = pred2, color = County, group = County)) + ylim(0,.001) +
+#   geom_point(data = ETANFdata, aes(x = Year, y = (ETANF/Population), color = County)) + ggtitle("Zoomed in Normalized2")
+# p5
+# p6
+# p7
+# p8
 ```
 
 ```{r Panel} 
@@ -147,12 +176,16 @@ p4
 #abline(lm(ETANFdata$ETANF ~ ETANFdata$Year), lwd = 3, col = "red")
 #coplot(ETANF ~ Year|County, type = "b", data = ETANFdata)
 
-panel <- plm(ETANF ~ SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Pov_Rate + Population, data = na.omit(ETANFdata), index = c("County", "Year"), model = "within")
-detect_lin_dep(panel)
-alias(panel, data = ETANFdata)
-summary(panel)
-
-pred.panel <- plm:::fitted_exp.plm(panel, data = ETANFdata)
+# panel <- plm(ETANF ~ SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Pov_Rate + Population, data = na.omit(ETANFdata), index = c("County", "Year"), model = "within")
+# 
+# detect_lin_dep(panel)
+# alias(panel, data = ETANFdata)
+# summary(panel)
+# 
+# #pred.panel <- plm:::fitted_exp.plm(panel, data = ETANFdata)
+# 
+# panel2 <- plm(ETANF ~ SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Pov_Rate + Population, data = na.omit(ETANFdata), index = c("County", "Year"), model = "pooling")
+# summary(panel2)
 
 #library(lme4)
 #fit1 <- glmer(ETANF ~ SNAP_July + Medicaid + CHIP + LFPR + Med_Income + ED_Attain_HSandAbove + Pov_Rate + Population + (County|Year), data = ETANFdata, family= poisson(link= "log"))
